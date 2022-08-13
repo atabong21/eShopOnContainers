@@ -1,4 +1,4 @@
-version: '3.4'
+version: '3.8'
 
 # The default docker-compose.override file can use the "localhost" as the external name for testing web apps within the same dev machine.
 # The ESHOP_EXTERNAL_DNS_NAME_OR_IP environment variable is taken, by default, from the ".env" file defined like:
@@ -8,37 +8,53 @@ version: '3.4'
 
 services:
   seq:
+    image: datalust/seq:latest
+    restart: always
+    tty: true
     environment:
-      - ACCEPT_EULA=Y
+      - ACCEPT_EULA=${ACCEPT_EULA}
     ports:
       - "5340:80"
+    env_file:
+      - .env  
 
   sqldata:
+    image: mcr.microsoft.com/mssql/server:2019-latest 
+    tty: true
     environment:
-      - SA_PASSWORD=Pass@word
-      - ACCEPT_EULA=Y
+      - SA_PASSWORD=${SA_PASSWORD}
+      - ACCEPT_EULA=${ACCEPT_EULA}
     ports:
       - "5433:1433"
     volumes:
-      - eshop-sqldata:/var/opt/mssql
+      - ./eshop-sqldata:/var/opt/mssql
+    env_files:
+      - .env  
 
   nosqldata:
-    ports:
+    image: mongo:4.2.3
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+    ports: 
       - "27017:27017"
     volumes:
-      - eshop-nosqldata:/data/db
-
+      - ./eshop-nosqldata:/data/db
+      
   basketdata:
+    image: redis:latest
     ports:
       - "6379:6379"
     volumes:
-      - eshop-basketdata:/data
+      - ./eshop-basketdata:/data
   rabbitmq:
+    image: rabbitmq:3-management-alpine
     ports:
       - "15672:15672"
       - "5672:5672"
 
   identity-api:
+    image: eshop/identity.api:dev # Make sure to replace with identity.api image you built with docker-compose up
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://0.0.0.0:80
@@ -57,6 +73,8 @@ services:
       - OrchestratorType=${ORCHESTRATOR_TYPE}
     ports:
       - "5105:80"
+    env_file:
+      - .env  
 
   basket-api:
     environment:
